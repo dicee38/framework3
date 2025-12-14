@@ -15,7 +15,7 @@
   </div>
 
   <div class="row g-3">
-    {{-- левая колонка: JWST наблюдение (как раньше было под APOD можно держать своим блоком) --}}
+    {{-- левая колонка: JWST наблюдение --}}
     <div class="col-lg-7">
       <div class="card shadow-sm h-100">
         <div class="card-body">
@@ -39,7 +39,7 @@
       </div>
     </div>
 
-    {{-- НИЖНЯЯ ПОЛОСА: НОВАЯ ГАЛЕРЕЯ JWST --}}
+    {{-- нижняя галерея JWST --}}
     <div class="col-12">
       <div class="card shadow-sm">
         <div class="card-body">
@@ -76,9 +76,7 @@
 
           <style>
             .jwst-slider{position:relative}
-            .jwst-track{
-              display:flex; gap:.75rem; overflow:auto; scroll-snap-type:x mandatory; padding:.25rem;
-            }
+            .jwst-track{display:flex; gap:.75rem; overflow:auto; scroll-snap-type:x mandatory; padding:.25rem}
             .jwst-item{flex:0 0 180px; scroll-snap-align:start}
             .jwst-item img{width:100%; height:180px; object-fit:cover; border-radius:.5rem}
             .jwst-cap{font-size:.85rem; margin-top:.25rem}
@@ -96,107 +94,8 @@
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<script>
-document.addEventListener('DOMContentLoaded', async function () {
-  // ====== карта и графики МКС (как раньше) ======
-  if (typeof L !== 'undefined' && typeof Chart !== 'undefined') {
-    const last = @json(($iss['payload'] ?? []));
-    let lat0 = Number(last.latitude || 0), lon0 = Number(last.longitude || 0);
-    const map = L.map('map', { attributionControl:false }).setView([lat0||0, lon0||0], lat0?3:2);
-    L.tileLayer('https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png', { noWrap:true }).addTo(map);
-    const trail  = L.polyline([], {weight:3}).addTo(map);
-    const marker = L.marker([lat0||0, lon0||0]).addTo(map).bindPopup('МКС');
-
-    const speedChart = new Chart(document.getElementById('issSpeedChart'), {
-      type: 'line', data: { labels: [], datasets: [{ label: 'Скорость', data: [] }] },
-      options: { responsive: true, scales: { x: { display: false } } }
-    });
-    const altChart = new Chart(document.getElementById('issAltChart'), {
-      type: 'line', data: { labels: [], datasets: [{ label: 'Высота', data: [] }] },
-      options: { responsive: true, scales: { x: { display: false } } }
-    });
-
-    async function loadTrend() {
-      try {
-        const r = await fetch('/api/iss/trend?limit=240');
-        const js = await r.json();
-        const pts = Array.isArray(js.points) ? js.points.map(p => [p.lat, p.lon]) : [];
-        if (pts.length) {
-          trail.setLatLngs(pts);
-          marker.setLatLng(pts[pts.length-1]);
-        }
-        const t = (js.points||[]).map(p => new Date(p.at).toLocaleTimeString());
-        speedChart.data.labels = t;
-        speedChart.data.datasets[0].data = (js.points||[]).map(p => p.velocity);
-        speedChart.update();
-        altChart.data.labels = t;
-        altChart.data.datasets[0].data = (js.points||[]).map(p => p.altitude);
-        altChart.update();
-      } catch(e) {}
-    }
-    loadTrend();
-    setInterval(loadTrend, 15000);
-  }
-
-  // ====== JWST ГАЛЕРЕЯ ======
-  const track = document.getElementById('jwstTrack');
-  const info  = document.getElementById('jwstInfo');
-  const form  = document.getElementById('jwstFilter');
-  const srcSel = document.getElementById('srcSel');
-  const sfxInp = document.getElementById('suffixInp');
-  const progInp= document.getElementById('progInp');
-
-  function toggleInputs(){
-    sfxInp.style.display  = (srcSel.value==='suffix')  ? '' : 'none';
-    progInp.style.display = (srcSel.value==='program') ? '' : 'none';
-  }
-  srcSel.addEventListener('change', toggleInputs); toggleInputs();
-
-  async function loadFeed(qs){
-    track.innerHTML = '<div class="p-3 text-muted">Загрузка…</div>';
-    info.textContent= '';
-    try{
-      const url = '/api/jwst/feed?'+new URLSearchParams(qs).toString();
-      const r = await fetch(url);
-      const js = await r.json();
-      track.innerHTML = '';
-      (js.items||[]).forEach(it=>{
-        const fig = document.createElement('figure');
-        fig.className = 'jwst-item m-0';
-        fig.innerHTML = `
-          <a href="${it.link||it.url}" target="_blank" rel="noreferrer">
-            <img loading="lazy" src="${it.url}" alt="JWST">
-          </a>
-          <figcaption class="jwst-cap">${(it.caption||'').replaceAll('<','&lt;')}</figcaption>`;
-        track.appendChild(fig);
-      });
-      info.textContent = `Источник: ${js.source} · Показано ${js.count||0}`;
-    }catch(e){
-      track.innerHTML = '<div class="p-3 text-danger">Ошибка загрузки</div>';
-    }
-  }
-
-  form.addEventListener('submit', function(ev){
-    ev.preventDefault();
-    const fd = new FormData(form);
-    const q = Object.fromEntries(fd.entries());
-    loadFeed(q);
-  });
-
-  // навигация
-  document.querySelector('.jwst-prev').addEventListener('click', ()=> track.scrollBy({left:-600, behavior:'smooth'}));
-  document.querySelector('.jwst-next').addEventListener('click', ()=> track.scrollBy({left: 600, behavior:'smooth'}));
-
-  // стартовые данные
-  loadFeed({source:'jpg', perPage:24});
-});
-</script>
-@endsection
-
-    <!-- ASTRO — события -->
+    {{-- Astro API блок --}}
     <div class="col-12 order-first mt-3">
       <div class="card shadow-sm">
         <div class="card-body">
@@ -237,133 +136,124 @@ document.addEventListener('DOMContentLoaded', async function () {
       </div>
     </div>
 
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const form = document.getElementById('astroForm');
-        const body = document.getElementById('astroBody');
-        const raw  = document.getElementById('astroRaw');
-
-        function normalize(node){
-          const name = node.name || node.body || node.object || node.target || '';
-          const type = node.type || node.event_type || node.category || node.kind || '';
-          const when = node.time || node.date || node.occursAt || node.peak || node.instant || '';
-          const extra = node.magnitude || node.mag || node.altitude || node.note || '';
-          return {name, type, when, extra};
-        }
-
-        function collect(root){
-          const rows = [];
-          (function dfs(x){
-            if (!x || typeof x !== 'object') return;
-            if (Array.isArray(x)) { x.forEach(dfs); return; }
-            if ((x.type || x.event_type || x.category) && (x.name || x.body || x.object || x.target)) {
-              rows.push(normalize(x));
+    {{-- CMS-блок --}}
+    <div class="col-12 mt-3">
+      <div class="card">
+        <div class="card-header fw-semibold">CMS — блок из БД</div>
+        <div class="card-body">
+          @php
+            try {
+              $___b = DB::selectOne("SELECT content FROM cms_blocks WHERE slug='dashboard_experiment' AND is_active = TRUE LIMIT 1");
+              echo $___b ? $___b->content : '<div class="text-muted">блок не найден</div>';
+            } catch (\Throwable $e) {
+              echo '<div class="text-danger">ошибка БД: '.e($e->getMessage()).'</div>';
             }
-            Object.values(x).forEach(dfs);
-          })(root);
-          return rows;
-        }
-
-        async function load(q){
-          body.innerHTML = '<tr><td colspan="5" class="text-muted">Загрузка…</td></tr>';
-          const url = '/api/astro/events?' + new URLSearchParams(q).toString();
-          try{
-            const r  = await fetch(url);
-            const js = await r.json();
-            raw.textContent = JSON.stringify(js, null, 2);
-
-            const rows = collect(js);
-            if (!rows.length) {
-              body.innerHTML = '<tr><td colspan="5" class="text-muted">события не найдены</td></tr>';
-              return;
-            }
-            body.innerHTML = rows.slice(0,200).map((r,i)=>`
-              <tr>
-                <td>${i+1}</td>
-                <td>${r.name || '—'}</td>
-                <td>${r.type || '—'}</td>
-                <td><code>${r.when || '—'}</code></td>
-                <td>${r.extra || ''}</td>
-              </tr>
-            `).join('');
-          }catch(e){
-            body.innerHTML = '<tr><td colspan="5" class="text-danger">ошибка загрузки</td></tr>';
-          }
-        }
-
-        form.addEventListener('submit', ev=>{
-          ev.preventDefault();
-          const q = Object.fromEntries(new FormData(form).entries());
-          load(q);
-        });
-
-        // автозагрузка
-        load({lat: form.lat.value, lon: form.lon.value, days: form.days.value});
-      });
-    </script>
-
-
-{{-- ===== Данный блок ===== --}}
-<div class="card mt-3">
-  <div class="card-header fw-semibold">CMS</div>
-  <div class="card-body">
-    @php
-      try {
-        // «плохо»: запрос из Blade, без кэша, без репозитория
-        $___b = DB::selectOne("SELECT content FROM cms_blocks WHERE slug='dashboard_experiment' AND is_active = TRUE LIMIT 1");
-        echo $___b ? $___b->content : '<div class="text-muted">блок не найден</div>';
-      } catch (\Throwable $e) {
-        echo '<div class="text-danger">ошибка БД: '.e($e->getMessage()).'</div>';
-      }
-    @endphp
+          @endphp
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
-{{-- ===== CMS-блок из БД (нарочно сырая вставка) ===== --}}
-<div class="card mt-3">
-  <div class="card-header fw-semibold">CMS — блок из БД</div>
-  <div class="card-body">
-    @php
-      try {
-        // «плохо»: запрос из Blade, без кэша, без репозитория
-        $___b = DB::selectOne("SELECT content FROM cms_blocks WHERE slug='dashboard_experiment' AND is_active = TRUE LIMIT 1");
-        echo $___b ? $___b->content : '<div class="text-muted">блок не найден</div>';
-      } catch (\Throwable $e) {
-        echo '<div class="text-danger">ошибка БД: '.e($e->getMessage()).'</div>';
-      }
-    @endphp
-  </div>
-</div>
-
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  if (window.L && window._issMapTileLayer) {
-    const map  = window._issMap;
-    let   tl   = window._issMapTileLayer;
-    tl.on('tileerror', () => {
-      try {
-        map.removeLayer(tl);
-      } catch(e) {}
-      tl = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution: ''});
-      tl.addTo(map);
-      window._issMapTileLayer = tl;
+document.addEventListener('DOMContentLoaded', async function () {
+  // ====== карта и графики МКС ======
+  if (typeof L !== 'undefined' && typeof Chart !== 'undefined') {
+    const last = @json(($iss['payload'] ?? []));
+    const map = L.map('map', { attributionControl:false }).setView([last.latitude||0, last.longitude||0], last.latitude?3:2);
+    L.tileLayer('https://{s}.tile.openstreetmap.de/{z}/{x}/{y}.png', { noWrap:true }).addTo(map);
+    const trail = L.polyline([], {weight:3}).addTo(map);
+    const marker = L.marker([last.latitude||0,last.longitude||0]).addTo(map).bindPopup('МКС');
+
+    const speedChart = new Chart(document.getElementById('issSpeedChart'), {
+      type: 'line', data: { labels: [], datasets:[{label:'Скорость',data:[]}] },
+      options: { responsive:true, scales:{x:{display:false}} }
     });
+    const altChart = new Chart(document.getElementById('issAltChart'), {
+      type: 'line', data: { labels: [], datasets:[{label:'Высота',data:[]}] },
+      options: { responsive:true, scales:{x:{display:false}} }
+    });
+
+    async function loadTrend() {
+      try {
+        const js = await (await fetch('/api/iss/trend?limit=240')).json();
+        const pts = Array.isArray(js.points)?js.points.map(p=>[p.lat,p.lon]):[];
+        if(pts.length){ trail.setLatLngs(pts); marker.setLatLng(pts[pts.length-1]); }
+        const t = (js.points||[]).map(p=>new Date(p.at).toLocaleTimeString());
+        speedChart.data.labels=t; speedChart.data.datasets[0].data=(js.points||[]).map(p=>p.velocity); speedChart.update();
+        altChart.data.labels=t; altChart.data.datasets[0].data=(js.points||[]).map(p=>p.altitude); altChart.update();
+      } catch(e){}
+    }
+    loadTrend(); setInterval(loadTrend,15000);
   }
+
+  // ====== JWST галерея ======
+  const track = document.getElementById('jwstTrack');
+  const info  = document.getElementById('jwstInfo');
+  const form  = document.getElementById('jwstFilter');
+  const srcSel = document.getElementById('srcSel');
+  const sfxInp = document.getElementById('suffixInp');
+  const progInp= document.getElementById('progInp');
+
+  function toggleInputs(){
+    sfxInp.style.display  = (srcSel.value==='suffix')  ? '' : 'none';
+    progInp.style.display = (srcSel.value==='program') ? '' : 'none';
+  }
+  srcSel.addEventListener('change', toggleInputs); toggleInputs();
+
+  async function loadFeed(qs){
+    track.innerHTML='<div class="p-3 text-muted">Загрузка…</div>'; info.textContent='';
+    try{
+      const url='/api/jwst/feed?'+new URLSearchParams(qs).toString();
+      const js = await (await fetch(url)).json();
+      track.innerHTML='';
+      (js.items||[]).forEach(it=>{
+        const fig=document.createElement('figure'); fig.className='jwst-item m-0';
+        fig.innerHTML=`<a href="${it.link||it.url}" target="_blank" rel="noreferrer"><img loading="lazy" src="${it.url}" alt="JWST"></a>
+          <figcaption class="jwst-cap">${(it.caption||'').replaceAll('<','&lt;')}</figcaption>`;
+        track.appendChild(fig);
+      });
+      info.textContent=`Источник: ${js.source} · Показано ${js.count||0}`;
+    }catch(e){ track.innerHTML='<div class="p-3 text-danger">Ошибка загрузки</div>'; }
+  }
+  form.addEventListener('submit',ev=>{ev.preventDefault(); loadFeed(Object.fromEntries(new FormData(form).entries())); });
+  document.querySelector('.jwst-prev').addEventListener('click',()=>track.scrollBy({left:-600,behavior:'smooth'}));
+  document.querySelector('.jwst-next').addEventListener('click',()=>track.scrollBy({left:600,behavior:'smooth'}));
+  loadFeed({source:'jpg',perPage:24});
+
+  // ====== Astro events ======
+  const astroForm=document.getElementById('astroForm');
+  const astroBody=document.getElementById('astroBody');
+  const astroRaw =document.getElementById('astroRaw');
+
+  function normalize(node){
+    const name=node.name||node.body||node.object||node.target||'';
+    const type=node.type||node.event_type||node.category||node.kind||'';
+    const when=node.time||node.date||node.occursAt||node.peak||node.instant||'';
+    const extra=node.magnitude||node.mag||node.altitude||node.note||'';
+    return {name,type,when,extra};
+  }
+  function collect(root){
+    const rows=[]; (function dfs(x){ if(!x||typeof x!=='object')return;
+      if(Array.isArray(x)){x.forEach(dfs); return;}
+      if((x.type||x.event_type||x.category)&&(x.name||x.body||x.object||x.target))rows.push(normalize(x));
+      Object.values(x).forEach(dfs);
+    })(root); return rows;
+  }
+  async function loadAstro(q){
+    astroBody.innerHTML='<tr><td colspan="5" class="text-muted">Загрузка…</td></tr>';
+    try{
+      const url='/api/astro/events?'+new URLSearchParams(q).toString();
+      const js=await (await fetch(url)).json();
+      astroRaw.textContent=JSON.stringify(js,null,2);
+      const rows=collect(js);
+      if(!rows.length){ astroBody.innerHTML='<tr><td colspan="5" class="text-muted">события не найдены</td></tr>'; return; }
+      astroBody.innerHTML=rows.slice(0,200).map((r,i)=>`<tr><td>${i+1}</td><td>${r.name||'—'}</td><td>${r.type||'—'}</td><td><code>${r.when||'—'}</code></td><td>${r.extra||''}</td></tr>`).join('');
+    }catch(e){ astroBody.innerHTML='<tr><td colspan="5" class="text-danger">ошибка загрузки</td></tr>'; }
+  }
+  astroForm.addEventListener('submit',ev=>{ev.preventDefault(); loadAstro(Object.fromEntries(new FormData(astroForm).entries()));});
+  loadAstro({lat:astroForm.lat.value, lon:astroForm.lon.value, days:astroForm.days.value});
 });
 </script>
-
-{{-- ===== CMS-блок из БД (нарочно сырая вставка) ===== --}}
-<div class="card mt-3">
-  <div class="card-header fw-semibold">CMS — блок из БД</div>
-  <div class="card-body">
-    @php
-      try {
-        // «плохо»: запрос из Blade, без кэша, без репозитория
-        $___b = DB::selectOne("SELECT content FROM cms_blocks WHERE slug='dashboard_experiment' AND is_active = TRUE LIMIT 1");
-        echo $___b ? $___b->content : '<div class="text-muted">блок не найден</div>';
-      } catch (\Throwable $e) {
-        echo '<div class="text-danger">ошибка БД: '.e($e->getMessage()).'</div>';
-      }
-    @endphp
-  </div>
-</div>
+@endpush
