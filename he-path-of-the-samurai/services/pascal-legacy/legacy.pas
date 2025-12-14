@@ -17,24 +17,37 @@ begin
   Result := minV + Random * (maxV - minV);
 end;
 
+function RandBoolText(): string;
+begin
+  if Random < 0.5 then Result := 'ЛОЖЬ' else Result := 'ИСТИНА';
+end;
+
 procedure GenerateAndCopy();
 var
   outDir, fn, fullpath, pghost, pgport, pguser, pgpass, pgdb, copyCmd: string;
   f: TextFile;
   ts: string;
+  voltage, temp: Double;
+  logicBlock: string;
 begin
   outDir := GetEnvDef('CSV_OUT_DIR', '/data/csv');
   ts := FormatDateTime('yyyymmdd_hhnnss', Now);
   fn := 'telemetry_' + ts + '.csv';
   fullpath := IncludeTrailingPathDelimiter(outDir) + fn;
 
-  // write CSV
+  // Generate random telemetry
+  voltage := RandFloat(3.2, 12.6);
+  temp := RandFloat(-50.0, 80.0);
+  logicBlock := RandBoolText();
+
+  // Write CSV compatible with Excel
   AssignFile(f, fullpath);
   Rewrite(f);
-  Writeln(f, 'recorded_at,voltage,temp,source_file');
+  Writeln(f, 'timestamp,voltage,temp,logic_block,source_file');
   Writeln(f, FormatDateTime('yyyy-mm-dd hh:nn:ss', Now) + ',' +
-             FormatFloat('0.00', RandFloat(3.2, 12.6)) + ',' +
-             FormatFloat('0.00', RandFloat(-50.0, 80.0)) + ',' +
+             FormatFloat('0.00', voltage) + ',' +
+             FormatFloat('0.00', temp) + ',' +
+             logicBlock + ',' +
              fn);
   CloseFile(f);
 
@@ -46,12 +59,9 @@ begin
   pgdb   := GetEnvDef('PGDATABASE', 'monolith');
 
   // Use psql with COPY FROM PROGRAM for simplicity
-  // Here we call psql reading from file
   copyCmd := 'psql "host=' + pghost + ' port=' + pgport + ' user=' + pguser + ' dbname=' + pgdb + '" ' +
-             '-c "\copy telemetry_legacy(recorded_at, voltage, temp, source_file) FROM ''' + fullpath + ''' WITH (FORMAT csv, HEADER true)"';
-  // Mask password via env
+             '-c "\copy telemetry_legacy(timestamp, voltage, temp, logic_block, source_file) FROM ''' + fullpath + ''' WITH (FORMAT csv, HEADER true)"';
   SetEnvironmentVariable('PGPASSWORD', pgpass);
-  // Execute
   fpSystem(copyCmd);
 end;
 
