@@ -6,13 +6,18 @@ use Illuminate\Http\Response;
 
 class ProxyController extends Controller
 {
-    private function base(): string {
+    private function base(): string 
+    {
         return getenv('RUST_BASE') ?: 'http://rust_iss:3000';
     }
 
-    public function last()  { return $this->pipe('/last'); }
+    public function last()  
+    { 
+        return $this->pipe('/last'); 
+    }
 
-    public function trend() {
+    public function trend() 
+    {
         $q = request()->getQueryString();
         return $this->pipe('/iss/trend' . ($q ? '?' . $q : ''));
     }
